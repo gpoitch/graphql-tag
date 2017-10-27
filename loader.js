@@ -2,6 +2,8 @@
 
 const os = require('os');
 const gql = require('./src');
+const loaderUtils = require('loader-utils');
+const print = require('graphql/language/printer').print;
 
 // Takes `source` (the source GraphQL query string)
 // and `doc` (the parsed GraphQL document) and tacks on
@@ -41,12 +43,16 @@ function expandImports(source, doc) {
 
 module.exports = function(source) {
   this.cacheable();
+
+  const options = loaderUtils.getOptions(this) || {};
   const doc = gql`${source}`;
-  const outputCode = `
-    var doc = ${JSON.stringify(doc)};
-    doc.loc.source = ${JSON.stringify(doc.loc.source)};
-  `;
   const importOutputCode = expandImports(source, doc);
+
+  const outputCode = options.outputString
+    ? `var doc = \`${print(doc)}\`;`
+    : `var doc = ${JSON.stringify(doc)};
+       doc.loc.source = ${JSON.stringify(doc.loc.source)};`;
 
   return outputCode + os.EOL + importOutputCode + os.EOL + `module.exports = doc;`;
 };
+
